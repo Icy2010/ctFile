@@ -57,10 +57,12 @@ func main() {
 		fmt.Println(ctfile.Quota)
 		fmt.Println(ctfile.Bandwidth)
 		fmt.Println(ctfile.Profile)
+		//基本信息
 
 		FileList(ctfile)
 
 		FileListFromIds(ctfile)
+		//文件列取
 
 		forders, e := ctfile.PublicCloud().FolderList(`d0`)
 		if e == nil {
@@ -73,6 +75,7 @@ func main() {
 		} else {
 			fmt.Println(e)
 		}
+		//列取文件夹
 	} else {
 		fmt.Println(err)
 	}
