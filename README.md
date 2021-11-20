@@ -19,47 +19,63 @@
 12. 文件上传完成 ✔
 
 ```golang
+package main
+
 import (
-  "github.com/Icy2010/ZeligCTFile"
+	"fmt"
+	z "github.com/Icy2010/ZeligCTFile"
 )
 
-    var ctfile TCTFile
-    err := ctfile.LoginFromToken("你的Token")
-        if err == nil {
+func FileList(ctfile z.TCTFile) {
+	files, err := ctfile.PublicCloud().FileList("d41982115", 0, 0, "", "", "")
+	if err == nil {
+		for i := 0; i < len(files); i++ {
+			fmt.Println(files[i])
+		}
+	} else {
+		fmt.Println(err)
+	}
+}
 
-            fmt.Println(ctfile.Quota)
-            fmt.Println(ctfile.Bandwidth)
-            fmt.Println(ctfile.Profile)
+func FileListFromIds(ctfile z.TCTFile) {
+	files, err := ctfile.PublicCloud().FileIdsList([]string{"d41982115", "d39859968"})
+	if err == nil {
+		for i := 0; i < len(files); i++ {
+			fmt.Println(files[i])
+		}
+	} else {
+		fmt.Println(err)
+	}
+}
 
-            files, err := ctfile.PublicCloud().FileList("d41982115", 0, 0, "", "", "")
-            if err == nil {
-                for i := 0; i < len(files); i++ {
-                   fmt.Println(files[i])
-                }
-            } else {
-               fmt.Println(err)
-            }
+func main() {
 
-            files, err := ctfile.PublicCloud().FileIdsList([]string{"d41982115", "d39859968"})
-            if err == nil {
-                for i := 0; i < len(files); i++ {
-                   fmt.Println(files[i])
-                }
-            } else {
-               fmt.Println(err)
-            }
-            
-            forders, e := ctfile.PublicCloud().FolderList(`d0`)
-            if e == nil {
-            for i := 0; i < len(forders); i++ {
-               fmt.Println(forders[i])
-            }
-            //.........................
-        } else {
-           fmt.Println(e) 
-        }
-    } else {
-       fmt.Println(err)
-    }
+	var ctfile z.TCTFile
+	err := ctfile.LoginFromToken("d11e6b01e40daa604280000c199d4f16")
+	if err == nil {
+
+		fmt.Println(ctfile.Quota)
+		fmt.Println(ctfile.Bandwidth)
+		fmt.Println(ctfile.Profile)
+
+		FileList(ctfile)
+
+		FileListFromIds(ctfile)
+
+		forders, e := ctfile.PublicCloud().FolderList(`d0`)
+		if e == nil {
+			for i := 0; i < len(forders); i++ {
+				fmt.Println(forders[i])
+			}
+			//.........................
+			
+			// 其他的实现 
+		} else {
+			fmt.Println(e)
+		}
+	} else {
+		fmt.Println(err)
+	}
+}
 
 ```
