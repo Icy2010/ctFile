@@ -1,3 +1,4 @@
+![image](https://github.com/Icy2010/ZeligCTFile/blob/main/zelig.ctfile.jpg)
 # Zelig.CTFile
 #### 城通网盘的API Go语言实现 
 #### 作者 Icy 
