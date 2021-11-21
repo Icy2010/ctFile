@@ -79,6 +79,10 @@ func (this *TCTFilePrivate) FileSave(Ids []string) error {
 	return this.ctfile.fileSave(false, Ids)
 }
 
-func (this *TCTFilePrivate) FileUpload(Folder_id, Filename string) error {
+func (this *TCTFilePrivate) FileUpload(Folder_id, Filename string) (string, error) {
 	return this.ctfile.fileUpload(false, Folder_id, Filename)
+}
+
+func (this *TCTFilePrivate) FileMeta(file_id string) (TCTFileFileMeta, error) {
+	return this.ctfile.fileMeta(false, file_id)
 }

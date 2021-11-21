@@ -5,11 +5,13 @@ import (
 	"testing"
 )
 
+const cToken = "a67519c04f954499f4fab2e1817c8fcf"
+
 func TestTCTFilePublic(t *testing.T) {
 	var ctfile TCTFile
 	//	err := ctfile.Login("email", "password")
 
-	err := ctfile.LoginFromToken("token")
+	err := ctfile.LoginFromToken(cToken)
 	if err == nil {
 
 		fmt.Println(ctfile.token)
@@ -67,7 +69,7 @@ func TestTCTFilePublic(t *testing.T) {
 
 func TestTCTFilePrivate(t *testing.T) {
 	var ctfile TCTFile
-	err := ctfile.LoginFromToken("d11e6b01e40daa604280000c199d4f16")
+	err := ctfile.LoginFromToken(cToken)
 	if err == nil {
 
 		fmt.Println(ctfile.token)

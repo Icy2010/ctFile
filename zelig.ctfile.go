@@ -128,11 +128,36 @@ type TCTFileFolderFileShare struct {
 
 type TCTFileFolderFileShares = []TCTFileFolderFileShare
 
+type TCTFileIncome struct {
+	AccountMode     int     `json:"account_mode"`      //0,1,2,5
+	AccountModeInfo string  `json:"account_mode_info"` //	分成模式（高收益模式已开启，临时低收益模式已开启，赚钱收益功能已关闭，低收益模式已开启）
+	AccountType     string  `json:"account_type"`      //	账号类型（普通账户，问答账户）
+	UserLevel       int     `json:"user_level"`        //会员等级
+	GroupType       int     `json:"qroup_type"`        //会员类型
+	TodayIncome     float64 `json:"today_income"`      //今日收入
+	TodayClicked    int     `json:"today_clicked"`     //今日点击数
+	AspireIncome    float64 `json:"aspire_income"`     //尊享卡翻倍收入
+	UnpaidIncome    float64 `json:"unpaid_income"`     //未兑换佣金
+	PaidIncome      float64 `json:"paid_income"`       //已兑换佣金
+}
+
+type TCTFileFileMeta struct {
+	Key  string `json:"key"`  //文件ID
+	Icon string `json:"icon"` //文件图标
+	Name string `json:"name"` //文件名称
+	Size int64  `json:"size"` //文件大小（bytes）
+	Path string `json:"path"` //为对应当前文件目录的相对位置。需要自动创建文件夹，并把文件下载至对应的文件夹内
+}
+
 type TCTFile struct {
 	token     string
 	Profile   TCTFileUserProfile
 	Quota     TCTFileQuota
 	Bandwidth TCTFileBandwidth
+}
+
+func (this *TCTFile) Token() string {
+	return this.token
 }
 
 func (this *TCTFile) LoginFromToken(token string) error {
@@ -432,6 +457,29 @@ func (this *TCTFile) fileList(IsPublic bool, Folder_id string, Start, Reload int
 	return result, err
 }
 
+func (this *TCTFile) fileMeta(IsPublic bool, file_id string) (TCTFileFileMeta, error) {
+	Data := TCTFileFileMeta{}
+	err := cTFilehttpPost(fmt.Sprintf(`https://rest.ctfile.com/v1/%s/file/meta`, public_private(IsPublic)),
+		map[string]interface{}{"session": this.token,
+			"file_id": file_id},
+		func(JO gjson.Result) error {
+			if JO.Get("code").Int() == 200 {
+				Data = TCTFileFileMeta{
+					Key:  JO.Get("key").String(),
+					Icon: JO.Get("icon").String(),
+					Name: JO.Get("name").String(),
+					Size: JO.Get("size").Int(),
+					Path: JO.Get("path").String(),
+				}
+
+				return nil
+			}
+
+			return fmt.Errorf(JO.Get("message").String())
+		})
+	return Data, err
+}
+
 func (this *TCTFile) fileIdsList(IsPublic bool, Ids []string) (TCTFileFolderFiles, error) {
 	var result TCTFileFolderFiles
 
@@ -634,7 +682,7 @@ func extractFilename(path string) string {
 	return fileName
 }
 
-func file_upload(url, file_name string, size int64) error {
+func file_upload(url, file_name string, size int64) (string, error) {
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
 
@@ -647,46 +695,46 @@ func file_upload(url, file_name string, size int64) error {
 	part3, errFile3 := writer.CreateFormFile("file", filepath.Base(file_name))
 	_, errFile3 = io.Copy(part3, file)
 	if errFile3 != nil {
-		return errFile3
+		return ``, errFile3
 	}
 	err := writer.Close()
 	if err != nil {
-		return err
+		return ``, err
 	}
 
 	client := &http.Client{}
 	req, err := http.NewRequest(`POST`, url, payload)
 	if err != nil {
 
-		return err
+		return ``, err
 	}
 	req.Header.Add("host", "upload.ctfile.com")
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	res, err := client.Do(req)
 	if err != nil {
-		return err
+		return ``, err
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
-		body, ep := ioutil.ReadAll(res.Body)
-		if ep != nil {
-			return ep
-		} else {
-			JO := gjson.ParseBytes(body)
-			if JO.Exists() {
-				if JO.Get("code").Int() != 200 {
-					return fmt.Errorf(JO.Get("message").String())
-				}
-			} ///  目前上传成功返回的东西很奇怪....
-		}
+	body, ep := ioutil.ReadAll(res.Body)
+	if ep != nil {
+		return ``, ep
 	}
 
-	return nil
+	if res.StatusCode != 200 {
+		JO := gjson.ParseBytes(body)
+		if JO.Exists() {
+			if JO.Get("code").Int() != 200 {
+				return ``, fmt.Errorf(JO.Get("message").String())
+			}
+		} ///  目前上传成功返回的东西很奇怪....
+	}
+
+	return string(body), ep
 }
 
-func (this *TCTFile) fileUpload(IsPublic bool, Folder_id, Filename string) error {
+func (this *TCTFile) fileUpload(IsPublic bool, Folder_id, Filename string) (string, error) {
 	Size := getFileSize(Filename)
 	Data := map[string]interface{}{
 		"session":   this.token,
@@ -708,9 +756,36 @@ func (this *TCTFile) fileUpload(IsPublic bool, Folder_id, Filename string) error
 			return nil
 		})
 
+	Body := ""
 	if err == nil {
-		err = file_upload(upload_url, Filename, Size)
+		Body, err = file_upload(upload_url, Filename, Size)
 	}
 
-	return err
+	return Body, err
+}
+
+func (this *TCTFile) Income() (TCTFileIncome, error) {
+	Data := TCTFileIncome{}
+	err := cTFilehttpPost(`https://rest.ctfile.com/v1/union/info/income`,
+		map[string]interface{}{"session": this.token},
+		func(JO gjson.Result) error {
+			if JO.Get("code").Int() == 200 {
+				Data.AccountMode = int(JO.Get("account_mode").Int())
+				Data.AccountType = JO.Get("account_type").String()
+				Data.AccountModeInfo = JO.Get("account_mode_info").String()
+				Data.UserLevel = int(JO.Get("user_level").Int())
+				Data.GroupType = int(JO.Get("group_type").Int())
+				Data.TodayIncome = JO.Get("today_income").Float()
+				Data.TodayClicked = int(JO.Get("today_clicked").Int())
+				Data.AspireIncome = JO.Get("aspire_income").Float()
+				Data.UnpaidIncome = JO.Get("unpaid_income").Float()
+				Data.PaidIncome = JO.Get("paid_income").Float()
+			} else {
+				return fmt.Errorf(JO.Get("message").String())
+			}
+
+			return nil
+		})
+
+	return Data, err
 }
