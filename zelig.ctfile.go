@@ -116,14 +116,14 @@ type TCTFileFolderFileDownload struct {
 type TCTFileFolderFileDownloads = []TCTFileFolderFileDownload
 
 type TCTFileFolderFileShare struct {
-	Key        string `json:"key"`        //文件ID
-	Icon       string `json:"icon"`       //文件图标
-	Name       string `json:"name"`       //文件名称
-	Size       int64  `json:"size"`       //文件大小（bytes）
-	Date       int64  `json:"date"`       //文件上传时间
-	Weblink    string `json:"weblink"`    //第三方网页分享地址
-	Xtlink     string `json:"xtlink"`     //小通链接地址
-	Directlink string `json:"directlink"` //直连分享地址
+	Key     string `json:"key"`     //文件ID
+	Icon    string `json:"icon"`    //文件图标
+	Name    string `json:"name"`    //文件名称
+	Size    int64  `json:"size"`    //文件大小（bytes）
+	Date    int64  `json:"date"`    //文件上传时间
+	Weblink string `json:"weblink"` //第三方网页分享地址
+	XtCode  string `json:"xtcode"`  //小通链接地址
+	Drlink  string `json:"drlink"`  //直连分享地址
 }
 
 type TCTFileFolderFileShares = []TCTFileFolderFileShare
@@ -605,18 +605,34 @@ func (this *TCTFile) fileShare(IsPublic bool, Ids []string) (TCTFileFolderFileSh
 		"session": this.token,
 		"ids":     Ids,
 	}, func(JO gjson.Result) error {
+		/*
+			{
+			  "code": 200,
+			  "results": [
+			    {
+			      "key": "f478659195",
+			      "icon": "mp4",
+			      "name": "Im颖萱[小记-1]Rihanna- S&M.mp4",
+			      "weblink": "http://ct.icy6.com/f/18943335-478659195-627e26",
+			      "xtcode": "xtc18943335-f478659195-7256b4-0",
+			      "drlink": "https://drfs.ctcontents.com/file/18943335/478659195/0d8eac/%E5%8E%86%E5%8F%B2%E6%96%87%E6%A1%A320210207%E5%89%8D%E7%9A%84/Im%E9%A2%96%E8%90%B1%E5%B0%8F%E8%AE%B0/Im%E9%A2%96%E8%90%B1%5B%E5%B0%8F%E8%AE%B0-1%5DRihanna-%20S%26M.mp4",
+			      "size": null,
+			      "date": null
+			    }
+			  ]
+			}		*/
 		JA := JO.Get("results").Array()
 		if len(JA) > 0 {
 			for i := 0; i < len(JA); i++ {
 				result = append(result, TCTFileFolderFileShare{
-					Key:        JA[i].Get("key").String(),
-					Icon:       JA[i].Get("icon").String(),
-					Name:       JA[i].Get("name").String(),
-					Size:       JA[i].Get("size").Int(),
-					Date:       JA[i].Get("date").Int(),
-					Weblink:    JA[i].Get("weblink").String(),
-					Xtlink:     JA[i].Get("xtlink").String(),
-					Directlink: JA[i].Get("directlink").String(),
+					Key:     JA[i].Get("key").String(),
+					Icon:    JA[i].Get("icon").String(),
+					Name:    JA[i].Get("name").String(),
+					Size:    JA[i].Get("size").Int(),
+					Date:    JA[i].Get("date").Int(),
+					Weblink: JA[i].Get("weblink").String(),
+					XtCode:  JA[i].Get("xtcode").String(),
+					Drlink:  JA[i].Get("drlink").String(),
 				})
 			}
 		}
