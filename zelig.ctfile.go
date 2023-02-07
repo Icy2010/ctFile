@@ -1,4 +1,4 @@
-package ZeligCTFile
+package CTFile
 
 /*
 	城通网盘的 API 实现  http://openapi.ctfile.com/
