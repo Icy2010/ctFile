@@ -1,5 +1,5 @@
 ![image](https://github.com/Icy2010/ZeligCTFile/blob/main/zelig.ctfile.jpg)
-# Zelig.CTFile
+# ctFile
 #### 城通网盘的API Go语言实现 
 #### 作者 Icy 
 #### Web http://zelig.cn
@@ -25,7 +25,7 @@ package main
 
 import (
 	"fmt"
-	z "github.com/Icy2010/ZeligCTFile"
+	z "github.com/Icy2010/ctFile"
 )
 
 func FileList(ctfile z.TCTFile) {
