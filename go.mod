@@ -1,4 +1,4 @@
-module github.com/Icy2010/ZeligCTFile
+module github.com/Icy2010/ctFile
 
 go 1.16
 
