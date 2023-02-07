@@ -1,4 +1,4 @@
-package ZeligCTFile
+package ctFile
 
 import (
 	"fmt"
