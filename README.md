@@ -84,3 +84,20 @@ func main() {
 }
 
 ```
+
+* 2025.7.2x 城通网盘大升级 终于把上传的返回改了。
+* 原来家在返回的内容内，有一个文件ID，最早未记得还会出现很多空格什么的
+* 这次是修改了 希望别改了也。
+* 这里声明的新的返回JSON如下：
+
+```go
+type TCTFileUploadResult struct {
+Id          int64  `json:"id,omitempty"`
+Name        string `json:"name,omitempty"`
+Size        int    `json:"size,omitempty"`
+Time        int    `json:"time,omitempty"`
+Userid      int    `json:"userid,omitempty"`
+FolderId    int    `json:"folderid,omitempty"`
+WorkspaceId int    `json:"workspaceid,omitempty"`
+}
+```

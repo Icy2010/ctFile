@@ -1,6 +1,8 @@
 package ctFile
 
 /*
+  2025.7.31 - 更新了上传返回.
+
 	城通网盘的 API 实现  http://openapi.ctfile.com/
     作者 Icy
     Web zelig.cn
@@ -23,7 +25,8 @@ package ctFile
 import (
 	"bytes"
 	"encoding/hex"
-	"io/ioutil"
+	"encoding/json"
+	"errors"
 	"mime/multipart"
 	"net/http"
 
@@ -38,117 +41,126 @@ import (
 )
 
 type TCTFileUserProfile struct {
-	User_id     int    `json:"user_id"`     //用户ID
-	User_name   string `json:"user_name"`   //用户名
-	Nick_name   string `json:"nick_name"`   //昵称
-	Group_type  int    `json:"group_type"`  //会员类型
-	Group_name  string `json:"group_name"`  //会员名称
-	Has_avatar  int    `json:"has_avatar"`  //是否有头像
-	Reg_time    int64  `json:"reg_time"`    //注册时间
-	Is_vip      bool   `json:"is_vip"`      //是否为VIP
-	Is_realname bool   `json:"is_realname"` //是否已经通过实名验证
-	Avatar_url  string `json:"avatar_url"`  //头像url
+	User_id     int    `json:"user_id,omitempty"`     //用户ID
+	User_name   string `json:"user_name,omitempty"`   //用户名
+	Nick_name   string `json:"nick_name,omitempty"`   //昵称
+	Group_type  int    `json:"group_type,omitempty"`  //会员类型
+	Group_name  string `json:"group_name,omitempty"`  //会员名称
+	Has_avatar  int    `json:"has_avatar,omitempty"`  //是否有头像
+	Reg_time    int64  `json:"reg_time,omitempty"`    //注册时间
+	Is_vip      bool   `json:"is_vip,omitempty"`      //是否为VIP
+	Is_realname bool   `json:"is_realname,omitempty"` //是否已经通过实名验证
+	Avatar_url  string `json:"avatar_url,omitempty"`  //头像url
 }
 
 type TCTFileQuota struct {
-	Max_storage         int64 `json:"max_storage"`         //公有云总容量 （bytes）
-	Max_private_storage int64 `json:"max_private_storage"` //私有云总容量 （bytes）
-	Space_used          int64 `json:"space_used"`          //公有云已用容量 （bytes）
-	Private_space_used  int64 `json:"private_space_used"`  //私有云已用容量 （bytes）
-	Total_files         int   `json:"total_files"`         //公有云总文件数
-	Total_private_files int   `json:"total_private_files"` //私有云总文件数
+	Max_storage         int64 `json:"max_storage,omitempty"`         //公有云总容量 （bytes）
+	Max_private_storage int64 `json:"max_private_storage,omitempty"` //私有云总容量 （bytes）
+	Space_used          int64 `json:"space_used,omitempty"`          //公有云已用容量 （bytes）
+	Private_space_used  int64 `json:"private_space_used,omitempty"`  //私有云已用容量 （bytes）
+	Total_files         int   `json:"total_files,omitempty"`         //公有云总文件数
+	Total_private_files int   `json:"total_private_files,omitempty"` //私有云总文件数
 }
 
 type TCTFileBandwidth struct {
-	Bandwith_total     int64 `json:"bandwith_total"`     //直连总流量（bytes）
-	Bandwith_remaining int64 `json:"bandwith_remaining"` //直连剩余流量（bytes）
-	Bandwith_used      int64 `json:"bandwith_used"`      //直连已用流量（bytes）
-	Max_yun            int64 `json:"max_yun"`            //总共云处理数
+	Bandwith_total     int64 `json:"bandwith_total,omitempty"`     //直连总流量（bytes）
+	Bandwith_remaining int64 `json:"bandwith_remaining,omitempty"` //直连剩余流量（bytes）
+	Bandwith_used      int64 `json:"bandwith_used,omitempty"`      //直连已用流量（bytes）
+	Max_yun            int64 `json:"max_yun,omitempty"`            //总共云处理数
 }
 
 type TCTFileFolder struct {
-	Key  string `json:"key"`
-	Icon string `json:"icon"`
-	Name string `json:"name"`
-	Date int64  `json:"date"`
+	Key  string `json:"key,omitempty"`
+	Icon string `json:"icon,omitempty"`
+	Name string `json:"name,omitempty"`
+	Date int64  `json:"date,omitempty"`
 }
 
 type TCTFileFolders = []TCTFileFolder
 
 type TCTFileFolderMeta struct {
-	Key       string `json:"key"`       //文件ID
-	Icon      string `json:"icon"`      //文件图标
-	Name      string `json:"name"`      //文件名称
-	Is_hidden int    `json:"is_hidden"` //是否在父目录隐藏
-	Path      string `json:"path"`      //文件夹位置
+	Key       string `json:"key,omitempty"`       //文件ID
+	Icon      string `json:"icon,omitempty"`      //文件图标
+	Name      string `json:"name,omitempty"`      //文件名称
+	Is_hidden int    `json:"is_hidden,omitempty"` //是否在父目录隐藏
+	Path      string `json:"path,omitempty"`      //文件夹位置
 }
 
 type TCTFileFolderFiles = []TCTFileFolderFile
 
 type TCTFileFolderFile struct {
-	Key    string `json:"key"`    //文件ID
-	Icon   string `json:"icon"`   //文件图标
-	Imgsrc string `json:"imgsrc"` //视频/图片的缩略图URL
-	Name   string `json:"name"`   //文件名称
-	Size   int64  `json:"size"`   //文件大小（bytes）
-	Date   int64  `json:"date"`   //文件上传时间
-	Status int    `json:"status"` //1: complete, 2: incomplete。如果为2，属于incomplete的状态，那请添加个未完成的icon（未完成的文件不支持下载、打包、解压）
+	Key    string `json:"key,omitempty"`    //文件ID
+	Icon   string `json:"icon,omitempty"`   //文件图标
+	Imgsrc string `json:"imgsrc,omitempty"` //视频/图片的缩略图URL
+	Name   string `json:"name,omitempty"`   //文件名称
+	Size   int64  `json:"size,omitempty"`   //文件大小（bytes）
+	Date   int64  `json:"date,omitempty"`   //文件上传时间
+	Status int    `json:"status,omitempty"` //1: complete, 2: incomplete。如果为2，属于incomplete的状态，那请添加个未完成的icon（未完成的文件不支持下载、打包、解压）
 }
 
 type TCTFileFolderFileRecycle struct {
-	Key      string `json:"key"`      //文件ID
-	Icon     string `json:"icon"`     //文件图标
-	Imgsrc   string `json:"imgsrc"`   //视频/图片的缩略图URL
-	Name     string `json:"name"`     //文件名称
-	Size     int64  `json:"size"`     //文件大小（bytes）
-	Date     int64  `json:"date"`     //文件上传时间
-	Del_time int64  `json:"del_time"` //文件被回收站清空时间
+	Key      string `json:"key,omitempty"`      //文件ID
+	Icon     string `json:"icon,omitempty"`     //文件图标
+	Imgsrc   string `json:"imgsrc,omitempty"`   //视频/图片的缩略图URL
+	Name     string `json:"name,omitempty"`     //文件名称
+	Size     int64  `json:"size,omitempty"`     //文件大小（bytes）
+	Date     int64  `json:"date,omitempty"`     //文件上传时间
+	Del_time int64  `json:"del_time,omitempty"` //文件被回收站清空时间
 }
 
 type TCTFileFolderFileRecycles = []TCTFileFolderFileRecycle
 type TCTFileFolderFileDownload struct {
-	Key  string `json:"key"`  //文件ID
-	Icon string `json:"icon"` //文件图标
-	Name string `json:"name"` //文件名称
-	Size int64  `json:"size"` //文件大小（bytes）
-	Path string `json:"path"` //为对应当前文件目录的相对位置。需要自动创建文件夹，并把文件下载至对应的文件夹内
+	Key  string `json:"key,omitempty"`  //文件ID
+	Icon string `json:"icon,omitempty"` //文件图标
+	Name string `json:"name,omitempty"` //文件名称
+	Size int64  `json:"size,omitempty"` //文件大小（bytes）
+	Path string `json:"path,omitempty"` //为对应当前文件目录的相对位置。需要自动创建文件夹，并把文件下载至对应的文件夹内
 }
 type TCTFileFolderFileDownloads = []TCTFileFolderFileDownload
 
 type TCTFileFolderFileShare struct {
-	Key     string `json:"key"`     //文件ID
-	Icon    string `json:"icon"`    //文件图标
-	Name    string `json:"name"`    //文件名称
-	Size    int64  `json:"size"`    //文件大小（bytes）
-	Date    int64  `json:"date"`    //文件上传时间
-	Weblink string `json:"weblink"` //第三方网页分享地址
-	XtCode  string `json:"xtcode"`  //小通链接地址
-	Drlink  string `json:"drlink"`  //直连分享地址
+	Key     string `json:"key,omitempty"`     //文件ID
+	Icon    string `json:"icon,omitempty"`    //文件图标
+	Name    string `json:"name,omitempty"`    //文件名称
+	Size    int64  `json:"size,omitempty"`    //文件大小（bytes）
+	Date    int64  `json:"date,omitempty"`    //文件上传时间
+	Weblink string `json:"weblink,omitempty"` //第三方网页分享地址
+	XtCode  string `json:"xtcode,omitempty"`  //小通链接地址
+	Drlink  string `json:"drlink,omitempty"`  //直连分享地址
 }
 
 type TCTFileFolderFileShares = []TCTFileFolderFileShare
 
 type TCTFileIncome struct {
-	AccountMode     int     `json:"account_mode"`      //0,1,2,5
-	AccountModeInfo string  `json:"account_mode_info"` //	分成模式（高收益模式已开启，临时低收益模式已开启，赚钱收益功能已关闭，低收益模式已开启）
-	AccountType     string  `json:"account_type"`      //	账号类型（普通账户，问答账户）
-	UserLevel       int     `json:"user_level"`        //会员等级
-	GroupType       int     `json:"qroup_type"`        //会员类型
-	TodayIncome     float64 `json:"today_income"`      //今日收入
-	TodayClicked    int     `json:"today_clicked"`     //今日点击数
-	AspireIncome    float64 `json:"aspire_income"`     //尊享卡翻倍收入
-	UnpaidIncome    float64 `json:"unpaid_income"`     //未兑换佣金
-	PaidIncome      float64 `json:"paid_income"`       //已兑换佣金
+	AccountMode     int     `json:"account_mode,omitempty"`      //0,1,2,5
+	AccountModeInfo string  `json:"account_mode_info,omitempty"` //	分成模式（高收益模式已开启，临时低收益模式已开启，赚钱收益功能已关闭，低收益模式已开启）
+	AccountType     string  `json:"account_type,omitempty"`      //	账号类型（普通账户，问答账户）
+	UserLevel       int     `json:"user_level,omitempty"`        //会员等级
+	GroupType       int     `json:"qroup_type,omitempty"`        //会员类型
+	TodayIncome     float64 `json:"today_income,omitempty"`      //今日收入
+	TodayClicked    int     `json:"today_clicked,omitempty"`     //今日点击数
+	AspireIncome    float64 `json:"aspire_income,omitempty"`     //尊享卡翻倍收入
+	UnpaidIncome    float64 `json:"unpaid_income,omitempty"`     //未兑换佣金
+	PaidIncome      float64 `json:"paid_income,omitempty"`       //已兑换佣金
 }
 
 type TCTFileFileMeta struct {
-	Key  string `json:"key"`  //文件ID
-	Icon string `json:"icon"` //文件图标
-	Name string `json:"name"` //文件名称
-	Size int64  `json:"size"` //文件大小（bytes）
-	Path string `json:"path"` //为对应当前文件目录的相对位置。需要自动创建文件夹，并把文件下载至对应的文件夹内
+	Key  string `json:"key,omitempty"`  //文件ID
+	Icon string `json:"icon,omitempty"` //文件图标
+	Name string `json:"name,omitempty"` //文件名称
+	Size int64  `json:"size,omitempty"` //文件大小（bytes）
+	Path string `json:"path,omitempty"` //为对应当前文件目录的相对位置。需要自动创建文件夹，并把文件下载至对应的文件夹内
 }
 
+type TCTFileUploadResult struct {
+	Id          int64  `json:"id,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Size        int    `json:"size,omitempty"`
+	Time        int    `json:"time,omitempty"`
+	Userid      int    `json:"userid,omitempty"`
+	FolderId    int    `json:"folderid,omitempty"`
+	WorkspaceId int    `json:"workspaceid,omitempty"`
+}
 type TCTFile struct {
 	token     string
 	Profile   TCTFileUserProfile
@@ -698,7 +710,7 @@ func extractFilename(path string) string {
 	return fileName
 }
 
-func file_upload(url, file_name string, size int64) (string, error) {
+func file_upload(url, file_name string, size int64) (*TCTFileUploadResult, error) {
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
 
@@ -711,33 +723,51 @@ func file_upload(url, file_name string, size int64) (string, error) {
 	part3, errFile3 := writer.CreateFormFile("file", filepath.Base(file_name))
 	_, errFile3 = io.Copy(part3, file)
 	if errFile3 != nil {
-		return ``, errFile3
+		return nil, errFile3
 	}
 	err := writer.Close()
 	if err != nil {
-		return ``, err
+		return nil, err
 	}
 
 	client := &http.Client{}
 	req, err := http.NewRequest(`POST`, url, payload)
 	if err != nil {
 
-		return ``, err
+		return nil, err
 	}
 	req.Header.Add("host", "upload.ctfile.com")
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	res, err := client.Do(req)
 	if err != nil {
-		return ``, err
+		return nil, err
 	}
 	defer res.Body.Close()
 
-	body, ep := ioutil.ReadAll(res.Body)
-	if ep != nil {
-		return ``, ep
+	if res.StatusCode != http.StatusOK {
+		return nil, errors.New(res.Status)
 	}
 
+	body, ep := io.ReadAll(res.Body)
+	if ep != nil {
+		return nil, ep
+	}
+
+	jo := gjson.ParseBytes(body)
+	if !jo.Exists() {
+		return nil, errors.New("返回JSON格式不正确")
+	}
+
+	if jo.Get("code").Int() != 200 {
+		return nil, errors.New(jo.Get("message").String())
+	}
+
+	result := TCTFileUploadResult{}
+	_ = json.Unmarshal(body, &result)
+	return &result, nil
+
+	/* 2025 7.20X 城通网盘大升级 这边畸形的地方终于修正了-最为历史保留，。。。。
 	if res.StatusCode != 200 {
 		JO := gjson.ParseBytes(body)
 		if JO.Exists() {
@@ -748,9 +778,12 @@ func file_upload(url, file_name string, size int64) (string, error) {
 	}
 
 	return string(body), ep
+
+	*/
+
 }
 
-func (this *TCTFile) fileUpload(IsPublic bool, Folder_id, Filename string) (string, error) {
+func (this *TCTFile) fileUpload(IsPublic bool, Folder_id, Filename string) (*TCTFileUploadResult, error) {
 	Size := getFileSize(Filename)
 	Data := map[string]interface{}{
 		"session":   this.token,
@@ -762,7 +795,7 @@ func (this *TCTFile) fileUpload(IsPublic bool, Folder_id, Filename string) (stri
 
 	upload_url := ""
 
-	err := cTFilehttpPost(fmt.Sprintf(`https://rest.ctfile.com/v1/%s/file/upload`, public_private(IsPublic)), Data,
+	if err := cTFilehttpPost(fmt.Sprintf(`https://rest.ctfile.com/v1/%s/file/upload`, public_private(IsPublic)), Data,
 		func(JO gjson.Result) error {
 			if JO.Get("exists").Int() > 0 {
 				return fmt.Errorf("文件已经存在了,无需上传")
@@ -770,14 +803,11 @@ func (this *TCTFile) fileUpload(IsPublic bool, Folder_id, Filename string) (stri
 				upload_url = JO.Get("upload_url").String()
 			}
 			return nil
-		})
-
-	Body := ""
-	if err == nil {
-		Body, err = file_upload(upload_url, Filename, Size)
+		}); err != nil {
+		return nil, err
 	}
 
-	return Body, err
+	return file_upload(upload_url, Filename, Size)
 }
 
 func (this *TCTFile) Income() (TCTFileIncome, error) {
@@ -878,7 +908,7 @@ func (this *TCTFileMethods) FileSave(Ids []string) error {
 	return this.ctfile.fileSave(this.isPublic, Ids)
 }
 
-func (this *TCTFileMethods) FileUpload(Folder_id, Filename string) (string, error) {
+func (this *TCTFileMethods) FileUpload(Folder_id, Filename string) (*TCTFileUploadResult, error) {
 	return this.ctfile.fileUpload(this.isPublic, Folder_id, Filename)
 }
 

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-const cToken = "2dcd93bd3cf0e27b568225494d341ef9"
+const cToken = "你的token"
 
 func TestTCTFilePublic(t *testing.T) {
 	var ctfile TCTFile
@@ -47,8 +47,8 @@ func TestTCTFilePublic(t *testing.T) {
 					fmt.Println(err)
 				}
 		*/
-		fid, _ := ctfile.PublicCloud().FileUpload(`d48182796`, `E:\Tools\Tools\CleanMaster.exe`)
-		fmt.Println(fid)
+		result, _ := ctfile.PublicCloud().FileUpload(`d48182796`, `/home/icy/Pictures/172vsk61h0ad1.jpeg`)
+		fmt.Println(result)
 	} else {
 		fmt.Println(err)
 	}
