@@ -1,7 +1,8 @@
 package ctFile
 
 /*
-  2025.7.31 - 更新了上传返回.
+    2025.8.1 - 增加文件上传子缓冲区
+    2025.7.31 - 更新了上传返回.
 
 	城通网盘的 API 实现  http://openapi.ctfile.com/
     作者 Icy
@@ -705,27 +706,31 @@ func getfileMD5(Filename string) string {
 	return ""
 }
 
+func bytes_md5(buf []byte) string {
+	_md5 := md5.New()
+	_md5.Write(buf)
+	return hex.EncodeToString(_md5.Sum(nil))
+}
+
 func extractFilename(path string) string {
 	_, fileName := filepath.Split(path)
 	return fileName
 }
 
-func file_upload(url, file_name string, size int64) (*TCTFileUploadResult, error) {
+func file_upload_bytes(url, fileName string, buf io.Reader, size int64) (*TCTFileUploadResult, error) {
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
 
-	_ = writer.WriteField("name", extractFilename(file_name))
+	_ = writer.WriteField("name", extractFilename(fileName))
 	_ = writer.WriteField("filesize", fmt.Sprintf(`%d`, size))
 
-	file, errFile3 := os.Open(file_name)
-	defer file.Close()
-
-	part3, errFile3 := writer.CreateFormFile("file", filepath.Base(file_name))
-	_, errFile3 = io.Copy(part3, file)
-	if errFile3 != nil {
-		return nil, errFile3
+	part3, err := writer.CreateFormFile("file", filepath.Base(fileName))
+	_, err = io.Copy(part3, buf)
+	if err != nil {
+		return nil, err
 	}
-	err := writer.Close()
+
+	err = writer.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -766,21 +771,44 @@ func file_upload(url, file_name string, size int64) (*TCTFileUploadResult, error
 	result := TCTFileUploadResult{}
 	_ = json.Unmarshal(body, &result)
 	return &result, nil
+}
 
-	/* 2025 7.20X 城通网盘大升级 这边畸形的地方终于修正了-最为历史保留，。。。。
-	if res.StatusCode != 200 {
-		JO := gjson.ParseBytes(body)
-		if JO.Exists() {
-			if JO.Get("code").Int() != 200 {
-				return ``, fmt.Errorf(JO.Get("message").String())
-			}
-		} ///  目前上传成功返回的东西很奇怪....
+func file_upload(url, file_name string, size int64) (*TCTFileUploadResult, error) {
+	file, err := os.Open(file_name)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	return file_upload_bytes(url, file_name, file, size)
+}
+
+func (this *TCTFile) fileUploadBytes(IsPublic bool, Folder_id, Filename string, buf []byte) (*TCTFileUploadResult, error) {
+	Size := getFileSize(Filename)
+	Data := map[string]interface{}{
+		"session":   this.token,
+		"folder_id": Folder_id,
+		"checksum":  bytes_md5(buf) + fmt.Sprintf(`-%d`, Size),
+		"size":      Size,
+		"name":      Filename,
 	}
 
-	return string(body), ep
+	upload_url := ""
 
-	*/
+	if err := cTFilehttpPost(fmt.Sprintf(`https://rest.ctfile.com/v1/%s/file/upload`, public_private(IsPublic)), Data,
+		func(JO gjson.Result) error {
+			if JO.Get("exists").Int() > 0 {
+				return fmt.Errorf("文件已经存在了,无需上传")
+			} else {
+				upload_url = JO.Get("upload_url").String()
+			}
+			return nil
+		}); err != nil {
+		return nil, err
+	}
 
+	body := bytes.NewReader(buf)
+	return file_upload_bytes(upload_url, Filename, body, body.Size())
 }
 
 func (this *TCTFile) fileUpload(IsPublic bool, Folder_id, Filename string) (*TCTFileUploadResult, error) {
@@ -910,6 +938,10 @@ func (this *TCTFileMethods) FileSave(Ids []string) error {
 
 func (this *TCTFileMethods) FileUpload(Folder_id, Filename string) (*TCTFileUploadResult, error) {
 	return this.ctfile.fileUpload(this.isPublic, Folder_id, Filename)
+}
+
+func (this *TCTFileMethods) FileUploadBytes(Folder_id, Filename string, buf []byte) (*TCTFileUploadResult, error) {
+	return this.ctfile.fileUploadBytes(this.isPublic, Folder_id, Filename, buf)
 }
 
 func (this *TCTFileMethods) FileMeta(file_id string) (TCTFileFileMeta, error) {

@@ -1,11 +1,14 @@
 package ctFile
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"testing"
 )
 
-const cToken = "你的token"
+const cToken = "你的密码"
 
 func TestTCTFilePublic(t *testing.T) {
 	var ctfile TCTFile
@@ -47,8 +50,16 @@ func TestTCTFilePublic(t *testing.T) {
 					fmt.Println(err)
 				}
 		*/
-		result, _ := ctfile.PublicCloud().FileUpload(`d48182796`, `/home/icy/Pictures/172vsk61h0ad1.jpeg`)
-		fmt.Println(result)
+		//result, _ := ctfile.PublicCloud().FileUpload(`d48182796`, `/home/icy/Pictures/172vsk61h0ad1.jpeg`)
+		//	fmt.Println(result)
+
+		if f, e := os.Open("/home/icy/Pictures/172vsk61h0ad1.jpeg"); e == nil {
+			defer f.Close()
+			buff := bytes.NewBuffer(nil)
+			io.Copy(buff, f)
+			res, _ := ctfile.PublicCloud().FileUploadBytes("d45766314", "test.jpeg", buff.Bytes())
+			fmt.Println(res)
+		}
 	} else {
 		fmt.Println(err)
 	}
